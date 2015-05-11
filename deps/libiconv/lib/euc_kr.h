@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2001, 2007 Free Software Foundation, Inc.
+ * Copyright (C) 1999-2001 Free Software Foundation, Inc.
  * This file is part of the GNU LIBICONV Library.
  *
  * The GNU LIBICONV Library is free software; you can redistribute it
@@ -25,13 +25,13 @@
 /* Specification: RFC 1557 */
 
 static int
-euc_kr_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
+euc_kr_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, size_t n)
 {
   unsigned char c = *s;
   /* Code set 0 (ASCII or KS C 5636-1993) */
   if (c < 0x80)
     return ascii_mbtowc(conv,pwc,s,n);
-  /* Code set 1 (KS C 5601-1992, now KS X 1001:2002) */
+  /* Code set 1 (KS C 5601-1992) */
   if (c >= 0xa1 && c < 0xff) {
     if (n < 2)
       return RET_TOOFEW(0);
@@ -49,7 +49,7 @@ euc_kr_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
 }
 
 static int
-euc_kr_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, int n)
+euc_kr_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, size_t n)
 {
   unsigned char buf[2];
   int ret;
@@ -59,7 +59,7 @@ euc_kr_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, int n)
   if (ret != RET_ILUNI)
     return ret;
 
-  /* Code set 1 (KS C 5601-1992, now KS X 1001:2002) */
+  /* Code set 1 (KS C 5601-1992) */
   ret = ksc5601_wctomb(conv,buf,wc,2);
   if (ret != RET_ILUNI) {
     if (ret != 2) abort();

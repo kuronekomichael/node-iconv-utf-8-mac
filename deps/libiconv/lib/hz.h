@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2001, 2008 Free Software Foundation, Inc.
+ * Copyright (C) 1999-2001 Free Software Foundation, Inc.
  * This file is part of the GNU LIBICONV Library.
  *
  * The GNU LIBICONV Library is free software; you can redistribute it
@@ -28,7 +28,7 @@
  */
 
 static int
-hz_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
+hz_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, size_t n)
 {
   state_t state = conv->istate;
   unsigned int count = 0;
@@ -67,7 +67,7 @@ hz_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
           continue;
         }
       }
-      goto ilseq;
+      return RET_ILSEQ;
     }
     break;
   }
@@ -81,7 +81,7 @@ hz_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
       goto none;
     ret = gb2312_mbtowc(conv,pwc,s,2);
     if (ret == RET_ILSEQ)
-      goto ilseq;
+      return RET_ILSEQ;
     if (ret != 2) abort();
     conv->istate = state;
     return count+2;
@@ -90,14 +90,10 @@ hz_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
 none:
   conv->istate = state;
   return RET_TOOFEW(count);
-
-ilseq:
-  conv->istate = state;
-  return RET_SHIFT_ILSEQ(count);
 }
 
 static int
-hz_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, int n)
+hz_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, size_t n)
 {
   state_t state = conv->ostate;
   unsigned char buf[2];
@@ -148,7 +144,7 @@ hz_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, int n)
 }
 
 static int
-hz_reset (conv_t conv, unsigned char *r, int n)
+hz_reset (conv_t conv, unsigned char *r, size_t n)
 {
   state_t state = conv->ostate;
   if (state) {

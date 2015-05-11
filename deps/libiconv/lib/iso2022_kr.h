@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2001, 2008 Free Software Foundation, Inc.
+ * Copyright (C) 1999-2001 Free Software Foundation, Inc.
  * This file is part of the GNU LIBICONV Library.
  *
  * The GNU LIBICONV Library is free software; you can redistribute it
@@ -50,7 +50,7 @@
   state = (state2 << 8) | state1
 
 static int
-iso2022_kr_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
+iso2022_kr_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, size_t n)
 {
   state_t state = conv->istate;
   SPLIT_STATE;
@@ -72,11 +72,11 @@ iso2022_kr_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
           }
         }
       }
-      goto ilseq;
+      return RET_ILSEQ;
     }
     if (c == SO) {
       if (state2 != STATE2_DESIGNATED_KSC5601)
-        goto ilseq;
+        return RET_ILSEQ;
       state1 = STATE_TWOBYTE;
       s++; count++;
       if (n < count+1)
@@ -97,7 +97,7 @@ iso2022_kr_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
       if (c < 0x80) {
         int ret = ascii_mbtowc(conv,pwc,s,1);
         if (ret == RET_ILSEQ)
-          goto ilseq;
+          return RET_ILSEQ;
         if (ret != 1) abort();
 #if 0 /* Accept ISO-2022-KR according to CJK.INF. */
         if (*pwc == 0x000a || *pwc == 0x000d)
@@ -107,7 +107,7 @@ iso2022_kr_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
         conv->istate = state;
         return count+1;
       } else
-        goto ilseq;
+        return RET_ILSEQ;
     case STATE_TWOBYTE:
       if (n < count+2)
         goto none;
@@ -115,13 +115,13 @@ iso2022_kr_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
       if (s[0] < 0x80 && s[1] < 0x80) {
         int ret = ksc5601_mbtowc(conv,pwc,s,2);
         if (ret == RET_ILSEQ)
-          goto ilseq;
+          return RET_ILSEQ;
         if (ret != 2) abort();
         COMBINE_STATE;
         conv->istate = state;
         return count+2;
       } else
-        goto ilseq;
+        return RET_ILSEQ;
     default: abort();
   }
 
@@ -129,15 +129,10 @@ none:
   COMBINE_STATE;
   conv->istate = state;
   return RET_TOOFEW(count);
-
-ilseq:
-  COMBINE_STATE;
-  conv->istate = state;
-  return RET_SHIFT_ILSEQ(count);
 }
 
 static int
-iso2022_kr_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, int n)
+iso2022_kr_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, size_t n)
 {
   state_t state = conv->ostate;
   SPLIT_STATE;
@@ -199,7 +194,7 @@ iso2022_kr_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, int n)
 }
 
 static int
-iso2022_kr_reset (conv_t conv, unsigned char *r, int n)
+iso2022_kr_reset (conv_t conv, unsigned char *r, size_t n)
 {
   state_t state = conv->ostate;
   SPLIT_STATE;

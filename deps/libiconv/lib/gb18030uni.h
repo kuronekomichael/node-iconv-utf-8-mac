@@ -168,7 +168,7 @@ static const unsigned short gb18030uni_ranges[206] = {
 };
 
 static int
-gb18030uni_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
+gb18030uni_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, size_t n)
 {
   unsigned char c1 = s[0];
   if (c1 >= 0x81 && c1 <= 0x84) {
@@ -182,7 +182,7 @@ gb18030uni_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
               unsigned char c4 = s[3];
               if (c4 >= 0x30 && c4 <= 0x39) {
                 unsigned int i = (((c1 - 0x81) * 10 + (c2 - 0x30)) * 126 + (c3 - 0x81)) * 10 + (c4 - 0x30);
-                if (i >= 0 && i <= 39419) {
+                if (/* i >= 0 && */ i <= 39419) {
                   unsigned int k1 = 0;
                   unsigned int k2 = 205;
                   while (k1 < k2) {
@@ -217,7 +217,7 @@ gb18030uni_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
 }
 
 static int
-gb18030uni_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, int n)
+gb18030uni_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, size_t n)
 {
   if (n >= 4) {
     unsigned int i = wc;

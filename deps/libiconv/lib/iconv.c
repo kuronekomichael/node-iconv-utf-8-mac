@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999-2008, 2011 Free Software Foundation, Inc.
+ * Copyright (C) 1999-2006 Free Software Foundation, Inc.
  * This file is part of the GNU LIBICONV Library.
  *
  * The GNU LIBICONV Library is free software; you can redistribute it
@@ -23,10 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "config.h"
-
-#ifdef __CYGWIN__
-#include <cygwin/version.h>
-#endif
+#include "localcharset.h"
 
 #if ENABLE_EXTRA
 /*
@@ -83,22 +80,21 @@ struct encoding {
   struct wctomb_funcs ofuncs; /* conversion unicode -> multibyte */
   int oflags;                 /* flags for unicode -> multibyte conversion */
 };
-#define DEFALIAS(xxx_alias,xxx) /* nothing */
 enum {
 #define DEFENCODING(xxx_names,xxx,xxx_ifuncs1,xxx_ifuncs2,xxx_ofuncs1,xxx_ofuncs2) \
   ei_##xxx ,
 #include "encodings.def"
 #ifdef USE_AIX
-# include "encodings_aix.def"
+#include "encodings_aix.def"
 #endif
 #ifdef USE_OSF1
-# include "encodings_osf1.def"
+#include "encodings_osf1.def"
 #endif
 #ifdef USE_DOS
-# include "encodings_dos.def"
+#include "encodings_dos.def"
 #endif
 #ifdef USE_EXTRA
-# include "encodings_extra.def"
+#include "encodings_extra.def"
 #endif
 #include "encodings_local.def"
 #undef DEFENCODING
@@ -110,16 +106,16 @@ static struct encoding const all_encodings[] = {
   { xxx_ifuncs1,xxx_ifuncs2, xxx_ofuncs1,xxx_ofuncs2, ei_##xxx##_oflags },
 #include "encodings.def"
 #ifdef USE_AIX
-# include "encodings_aix.def"
+#include "encodings_aix.def"
 #endif
 #ifdef USE_OSF1
-# include "encodings_osf1.def"
+#include "encodings_osf1.def"
 #endif
 #ifdef USE_DOS
-# include "encodings_dos.def"
+#include "encodings_dos.def"
 #endif
 #ifdef USE_EXTRA
-# include "encodings_extra.def"
+#include "encodings_extra.def"
 #endif
 #undef DEFENCODING
 #define DEFENCODING(xxx_names,xxx,xxx_ifuncs1,xxx_ifuncs2,xxx_ofuncs1,xxx_ofuncs2) \
@@ -127,7 +123,6 @@ static struct encoding const all_encodings[] = {
 #include "encodings_local.def"
 #undef DEFENCODING
 };
-#undef DEFALIAS
 
 /*
  * Conversion loops.
@@ -141,17 +136,7 @@ static struct encoding const all_encodings[] = {
  *   const struct alias * aliases_lookup (const char *str, unsigned int len);
  *   #define MAX_WORD_LENGTH ...
  */
-#if defined _AIX
-# include "aliases_sysaix.h"
-#elif defined hpux || defined __hpux
-# include "aliases_syshpux.h"
-#elif defined __osf__
-# include "aliases_sysosf1.h"
-#elif defined __sun
-# include "aliases_syssolaris.h"
-#else
-# include "aliases.h"
-#endif
+#include "aliases.h"
 
 /*
  * System dependent alias lookup function.
@@ -175,10 +160,7 @@ static const struct alias sysdep_aliases[] = {
 #include "aliases2.h"
 #undef S
 };
-#ifdef __GNUC__
-__inline
-#endif
-static const struct alias *
+const struct alias *
 aliases2_lookup (register const char *str)
 {
   const struct alias * ptr;
@@ -217,15 +199,173 @@ static int strequal (const char* str1, const char* str2)
 iconv_t iconv_open (const char* tocode, const char* fromcode)
 {
   struct conv_struct * cd;
+  char buf[MAX_WORD_LENGTH+10+1];
+  const char* cp;
+  char* bp;
+  const struct alias * ap;
+  unsigned int count;
   unsigned int from_index;
   int from_wchar;
   unsigned int to_index;
   int to_wchar;
-  int transliterate;
-  int discard_ilseq;
+  int transliterate = 0;
+  int discard_ilseq = 0;
 
-#include "iconv_open1.h"
-
+  /* Before calling aliases_lookup, convert the input string to upper case,
+   * and check whether it's entirely ASCII (we call gperf with option "-7"
+   * to achieve a smaller table) and non-empty. If it's not entirely ASCII,
+   * or if it's too long, it is not a valid encoding name.
+   */
+  for (to_wchar = 0;;) {
+    /* Search tocode in the table. */
+    for (cp = tocode, bp = buf, count = MAX_WORD_LENGTH+10+1; ; cp++, bp++) {
+      unsigned char c = * (unsigned char *) cp;
+      if (c >= 0x80)
+        goto invalid;
+      if (c >= 'a' && c <= 'z')
+        c -= 'a'-'A';
+      *bp = c;
+      if (c == '\0')
+        break;
+      if (--count == 0)
+        goto invalid;
+    }
+    for (;;) {
+      if (bp-buf >= 10 && memcmp(bp-10,"//TRANSLIT",10)==0) {
+        bp -= 10;
+        *bp = '\0';
+        transliterate = 1;
+        continue;
+      }
+      if (bp-buf >= 8 && memcmp(bp-8,"//IGNORE",8)==0) {
+        bp -= 8;
+        *bp = '\0';
+        discard_ilseq = 1;
+        continue;
+      }
+      break;
+    }
+    if (buf[0] == '\0') {
+      tocode = locale_charset();
+      /* Avoid an endless loop that could occur when using an older version
+         of localcharset.c. */
+      if (tocode[0] == '\0')
+        goto invalid;
+      continue;
+    }
+    ap = aliases_lookup(buf,(unsigned int)(bp-buf));
+    if (ap == NULL) {
+      ap = aliases2_lookup(buf);
+      if (ap == NULL)
+        goto invalid;
+    }
+    if (ap->encoding_index == ei_local_char) {
+      tocode = locale_charset();
+      /* Avoid an endless loop that could occur when using an older version
+         of localcharset.c. */
+      if (tocode[0] == '\0')
+        goto invalid;
+      continue;
+    }
+    if (ap->encoding_index == ei_local_wchar_t) {
+#if __STDC_ISO_10646__
+      if (sizeof(wchar_t) == 4) {
+        to_index = ei_ucs4internal;
+        break;
+      }
+      if (sizeof(wchar_t) == 2) {
+        to_index = ei_ucs2internal;
+        break;
+      }
+      if (sizeof(wchar_t) == 1) {
+        to_index = ei_iso8859_1;
+        break;
+      }
+#endif
+#if HAVE_MBRTOWC
+      to_wchar = 1;
+      tocode = locale_charset();
+      continue;
+#endif
+      goto invalid;
+    }
+    to_index = ap->encoding_index;
+    break;
+  }
+  for (from_wchar = 0;;) {
+    /* Search fromcode in the table. */
+    for (cp = fromcode, bp = buf, count = MAX_WORD_LENGTH+10+1; ; cp++, bp++) {
+      unsigned char c = * (unsigned char *) cp;
+      if (c >= 0x80)
+        goto invalid;
+      if (c >= 'a' && c <= 'z')
+        c -= 'a'-'A';
+      *bp = c;
+      if (c == '\0')
+        break;
+      if (--count == 0)
+        goto invalid;
+    }
+    for (;;) {
+      if (bp-buf >= 10 && memcmp(bp-10,"//TRANSLIT",10)==0) {
+        bp -= 10;
+        *bp = '\0';
+        continue;
+      }
+      if (bp-buf >= 8 && memcmp(bp-8,"//IGNORE",8)==0) {
+        bp -= 8;
+        *bp = '\0';
+        continue;
+      }
+      break;
+    }
+    if (buf[0] == '\0') {
+      fromcode = locale_charset();
+      /* Avoid an endless loop that could occur when using an older version
+         of localcharset.c. */
+      if (fromcode[0] == '\0')
+        goto invalid;
+      continue;
+    }
+    ap = aliases_lookup(buf,(unsigned int)(bp-buf));
+    if (ap == NULL) {
+      ap = aliases2_lookup(buf);
+      if (ap == NULL)
+        goto invalid;
+    }
+    if (ap->encoding_index == ei_local_char) {
+      fromcode = locale_charset();
+      /* Avoid an endless loop that could occur when using an older version
+         of localcharset.c. */
+      if (fromcode[0] == '\0')
+        goto invalid;
+      continue;
+    }
+    if (ap->encoding_index == ei_local_wchar_t) {
+#if __STDC_ISO_10646__
+      if (sizeof(wchar_t) == 4) {
+        from_index = ei_ucs4internal;
+        break;
+      }
+      if (sizeof(wchar_t) == 2) {
+        from_index = ei_ucs2internal;
+        break;
+      }
+      if (sizeof(wchar_t) == 1) {
+        from_index = ei_iso8859_1;
+        break;
+      }
+#endif
+#if HAVE_WCRTOMB
+      from_wchar = 1;
+      fromcode = locale_charset();
+      continue;
+#endif
+      goto invalid;
+    }
+    from_index = ap->encoding_index;
+    break;
+  }
   cd = (struct conv_struct *) malloc(from_wchar != to_wchar
                                      ? sizeof(struct wchar_conv_struct)
                                      : sizeof(struct conv_struct));
@@ -233,9 +373,60 @@ iconv_t iconv_open (const char* tocode, const char* fromcode)
     errno = ENOMEM;
     return (iconv_t)(-1);
   }
-
-#include "iconv_open2.h"
-
+  cd->iindex = from_index;
+  cd->ifuncs = all_encodings[from_index].ifuncs;
+  cd->oindex = to_index;
+  cd->ofuncs = all_encodings[to_index].ofuncs;
+  cd->oflags = all_encodings[to_index].oflags;
+  /* Initialize the loop functions. */
+#if HAVE_MBRTOWC
+  if (to_wchar) {
+#if HAVE_WCRTOMB
+    if (from_wchar) {
+      cd->lfuncs.loop_convert = wchar_id_loop_convert;
+      cd->lfuncs.loop_reset = wchar_id_loop_reset;
+    } else
+#endif
+    {
+      cd->lfuncs.loop_convert = wchar_to_loop_convert;
+      cd->lfuncs.loop_reset = wchar_to_loop_reset;
+    }
+  } else
+#endif
+  {
+#if HAVE_WCRTOMB
+    if (from_wchar) {
+      cd->lfuncs.loop_convert = wchar_from_loop_convert;
+      cd->lfuncs.loop_reset = wchar_from_loop_reset;
+    } else
+#endif
+    {
+      cd->lfuncs.loop_convert = unicode_loop_convert;
+      cd->lfuncs.loop_reset = unicode_loop_reset;
+    }
+  }
+  /* Initialize the states. */
+  memset(&cd->istate,'\0',sizeof(state_t));
+  memset(&cd->ostate,'\0',sizeof(state_t));
+  /* Initialize the operation flags. */
+  cd->transliterate = transliterate;
+  cd->discard_ilseq = discard_ilseq;
+  #ifndef LIBICONV_PLUG
+  cd->fallbacks.mb_to_uc_fallback = NULL;
+  cd->fallbacks.uc_to_mb_fallback = NULL;
+  cd->fallbacks.mb_to_wc_fallback = NULL;
+  cd->fallbacks.wc_to_mb_fallback = NULL;
+  cd->fallbacks.data = NULL;
+  cd->hooks.uc_hook = NULL;
+  cd->hooks.wc_hook = NULL;
+  cd->hooks.data = NULL;
+  #endif
+  /* Initialize additional fields. */
+  if (from_wchar != to_wchar) {
+    struct wchar_conv_struct * wcd = (struct wchar_conv_struct *) cd;
+    memset(&wcd->state,'\0',sizeof(mbstate_t));
+  }
+  /* Done. */
   return (iconv_t)cd;
 invalid:
   errno = EINVAL;
@@ -243,8 +434,8 @@ invalid:
 }
 
 size_t iconv (iconv_t icd,
-              ICONV_CONST char* * inbuf, size_t *inbytesleft,
-              char* * outbuf, size_t *outbytesleft)
+              char* * __restrict inbuf, size_t * __restrict inbytesleft,
+              char* * __restrict outbuf, size_t * __restrict outbytesleft)
 {
   conv_t cd = (conv_t) icd;
   if (inbuf == NULL || *inbuf == NULL)
@@ -263,40 +454,6 @@ int iconv_close (iconv_t icd)
 }
 
 #ifndef LIBICONV_PLUG
-
-/*
- * Verify that a 'struct conv_struct' and a 'struct wchar_conv_struct' each
- * fit in an iconv_allocation_t.
- * If this verification fails, iconv_allocation_t must be made larger and
- * the major version in LIBICONV_VERSION_INFO must be bumped.
- * Currently 'struct conv_struct' has 21 integer/pointer fields, and
- * 'struct wchar_conv_struct' additionally has an 'mbstate_t' field.
- */
-typedef int verify_size_1[2 * (sizeof (struct conv_struct) <= sizeof (iconv_allocation_t)) - 1];
-typedef int verify_size_2[2 * (sizeof (struct wchar_conv_struct) <= sizeof (iconv_allocation_t)) - 1];
-
-int iconv_open_into (const char* tocode, const char* fromcode,
-                     iconv_allocation_t* resultp)
-{
-  struct conv_struct * cd;
-  unsigned int from_index;
-  int from_wchar;
-  unsigned int to_index;
-  int to_wchar;
-  int transliterate;
-  int discard_ilseq;
-
-#include "iconv_open1.h"
-
-  cd = (struct conv_struct *) resultp;
-
-#include "iconv_open2.h"
-
-  return 0;
-invalid:
-  errno = EINVAL;
-  return -1;
-}
 
 int iconvctl (iconv_t icd, int request, void* argument)
 {
@@ -375,20 +532,20 @@ void iconvlist (int (*do_one) (unsigned int namescount,
                                void* data),
                 void* data)
 {
-#define aliascount1  sizeof(aliases)/sizeof(aliases[0])
+#define aliascount1  (unsigned int)(sizeof(aliases)/sizeof(aliases[0]))
 #ifndef aliases2_lookup
-#define aliascount2  sizeof(sysdep_aliases)/sizeof(sysdep_aliases[0])
+#define aliascount2  (unsigned int)(sizeof(sysdep_aliases)/sizeof(sysdep_aliases[0]))
 #else
 #define aliascount2  0
 #endif
 #define aliascount  (aliascount1+aliascount2)
   struct nalias aliasbuf[aliascount];
   const char * namesbuf[aliascount];
-  size_t num_aliases;
+  unsigned int num_aliases;
   {
     /* Put all existing aliases into a buffer. */
-    size_t i;
-    size_t j;
+    unsigned int i;
+    unsigned int j;
     j = 0;
     for (i = 0; i < aliascount1; i++) {
       const struct alias * p = &aliases[i];
@@ -414,11 +571,11 @@ void iconvlist (int (*do_one) (unsigned int namescount,
     qsort(aliasbuf, num_aliases, sizeof(struct nalias), compare_by_index);
   {
     /* Process all aliases with the same encoding_index together. */
-    size_t j;
+    unsigned int j;
     j = 0;
     while (j < num_aliases) {
       unsigned int ei = aliasbuf[j].encoding_index;
-      size_t i = 0;
+      unsigned int i = 0;
       do
         namesbuf[i++] = aliasbuf[j++].name;
       while (j < num_aliases && aliasbuf[j].encoding_index == ei);
@@ -439,48 +596,20 @@ void iconvlist (int (*do_one) (unsigned int namescount,
  * Instead of strings, it contains offsets into stringpool and stringpool2.
  */
 static const unsigned short all_canonical[] = {
-#if defined _AIX
-# include "canonical_sysaix.h"
-#elif defined hpux || defined __hpux
-# include "canonical_syshpux.h"
-#elif defined __osf__
-# include "canonical_sysosf1.h"
-#elif defined __sun
-# include "canonical_syssolaris.h"
-#else
-# include "canonical.h"
-#endif
+#include "canonical.h"
 #ifdef USE_AIX
-# if defined _AIX
-#  include "canonical_aix_sysaix.h"
-# else
-#  include "canonical_aix.h"
-# endif
+#include "canonical_aix.h"
 #endif
 #ifdef USE_OSF1
-# if defined __osf__
-#  include "canonical_osf1_sysosf1.h"
-# else
-#  include "canonical_osf1.h"
-# endif
+#include "canonical_osf1.h"
 #endif
 #ifdef USE_DOS
-# include "canonical_dos.h"
+#include "canonical_dos.h"
 #endif
 #ifdef USE_EXTRA
-# include "canonical_extra.h"
+#include "canonical_extra.h"
 #endif
-#if defined _AIX
-# include "canonical_local_sysaix.h"
-#elif defined hpux || defined __hpux
-# include "canonical_local_syshpux.h"
-#elif defined __osf__
-# include "canonical_local_sysosf1.h"
-#elif defined __sun
-# include "canonical_local_syssolaris.h"
-#else
-# include "canonical_local.h"
-#endif
+#include "canonical_local.h"
 };
 
 const char * iconv_canonicalize (const char * name)
@@ -535,7 +664,7 @@ const char * iconv_canonicalize (const char * name)
       continue;
     }
     pool = stringpool;
-    ap = aliases_lookup(buf,bp-buf);
+    ap = aliases_lookup(buf,(unsigned int)(bp-buf));
     if (ap == NULL) {
       pool = stringpool2;
       ap = aliases2_lookup(buf);
@@ -551,23 +680,7 @@ const char * iconv_canonicalize (const char * name)
       continue;
     }
     if (ap->encoding_index == ei_local_wchar_t) {
-      /* On systems which define __STDC_ISO_10646__, wchar_t is Unicode.
-         This is also the case on native Woe32 systems and Cygwin >= 1.7, where
-         we know that it is UTF-16.  */
-#if ((defined _WIN32 || defined __WIN32__) && !defined __CYGWIN__) || (defined __CYGWIN__ && CYGWIN_VERSION_DLL_MAJOR >= 1007)
-      if (sizeof(wchar_t) == 4) {
-        index = ei_ucs4internal;
-        break;
-      }
-      if (sizeof(wchar_t) == 2) {
-# if WORDS_LITTLEENDIAN
-        index = ei_utf16le;
-# else
-        index = ei_utf16be;
-# endif
-        break;
-      }
-#elif __STDC_ISO_10646__
+#if __STDC_ISO_10646__
       if (sizeof(wchar_t) == 4) {
         index = ei_ucs4internal;
         break;
@@ -604,6 +717,45 @@ int _libiconv_version = _LIBICONV_VERSION;
 strong_alias (libiconv_open, iconv_open)
 strong_alias (libiconv, iconv)
 strong_alias (libiconv_close, iconv_close)
+#elif defined __APPLE__
+#if defined(__ppc__) || defined(__i386__)
+/* backward compatibility */
+iconv_t
+libiconv_open(const char *tocode, const char *fromcode)
+{
+	return iconv_open(tocode, fromcode);
+}
+
+size_t
+libiconv(iconv_t cd, const char ** inbuf,
+	size_t * inbytesleft, char ** outbuf,
+	size_t * outbytesleft)
+{
+	return iconv(cd, (char **)inbuf, inbytesleft, outbuf, outbytesleft);
+}
+
+int
+libiconv_close(iconv_t cd)
+{
+	return iconv_close(cd);
+}
+
+int
+libiconvctl(iconv_t cd, int request, void* argument)
+{
+	return iconvctl(cd, request, argument);
+}
+
+void
+libiconvlist(int (*do_one) (unsigned int namescount,
+				const char * const * names,
+				void* data),
+			void* data)
+{
+	iconvlist(do_one, data);
+}
+
+#endif /* __ppc__ || __i386__ */
 #endif
 
 #endif

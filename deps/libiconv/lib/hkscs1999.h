@@ -850,7 +850,7 @@ static const ucs4_t hkscs1999_2uni_upages[973] = {
 };
 
 static int
-hkscs1999_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, int n)
+hkscs1999_mbtowc (conv_t conv, ucs4_t *pwc, const unsigned char *s, size_t n)
 {
   unsigned char c1 = s[0];
   if ((c1 >= 0x88 && c1 <= 0x8b) || (c1 >= 0x8d && c1 <= 0xa0) || (c1 >= 0xc6 && c1 <= 0xc8) || (c1 >= 0xf9 && c1 <= 0xfe)) {
@@ -2950,11 +2950,11 @@ static const Summary16 hkscs1999_uni2indx_page2f8[30] = {
 };
 
 static int
-hkscs1999_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, int n)
+hkscs1999_wctomb (conv_t conv, unsigned char *r, ucs4_t wc, size_t n)
 {
   if (n >= 2) {
     const Summary16 *summary = NULL;
-    if (wc >= 0x0000 && wc < 0x02d0)
+    if (/* wc >= 0x0000 && */ wc < 0x02d0)
       summary = &hkscs1999_uni2indx_page00[(wc>>4)];
     else if (wc >= 0x0400 && wc < 0x0460)
       summary = &hkscs1999_uni2indx_page04[(wc>>4)-0x040];

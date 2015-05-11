@@ -21,6 +21,9 @@ IBM367, ei_ascii
 US, ei_ascii
 CSASCII, ei_ascii
 UTF-8, ei_utf8
+UTF8, ei_utf8
+UTF-8-MAC, ei_utf8mac
+UTF8-MAC, ei_utf8mac
 UCS-2, ei_ucs2
 ISO-10646-UCS-2, ei_ucs2
 CSUNICODE, ei_ucs2
@@ -206,7 +209,6 @@ CP866, ei_cp866
 IBM866, ei_cp866
 866, ei_cp866
 CSIBM866, ei_cp866
-CP1131, ei_cp1131
 MACROMAN, ei_mac_roman
 MACINTOSH, ei_mac_roman
 MAC, ei_mac_roman
@@ -236,10 +238,6 @@ PTCP154, ei_pt154
 CP154, ei_pt154
 CYRILLIC-ASIAN, ei_pt154
 CSPTCP154, ei_pt154
-RK1048, ei_rk1048
-STRK1048-2002, ei_rk1048
-KZ-1048, ei_rk1048
-CSKZ1048, ei_rk1048
 MULELAO-1, ei_mulelao
 CP1133, ei_cp1133
 IBM-CP1133, ei_cp1133
@@ -341,10 +339,9 @@ CSBIG5, ei_ces_big5
 CP950, ei_cp950
 BIG5-HKSCS:1999, ei_big5hkscs1999
 BIG5-HKSCS:2001, ei_big5hkscs2001
+BIG5-HKSCS, ei_big5hkscs2004
+BIG5HKSCS, ei_big5hkscs2004
 BIG5-HKSCS:2004, ei_big5hkscs2004
-BIG5-HKSCS, ei_big5hkscs2008
-BIG5HKSCS, ei_big5hkscs2008
-BIG5-HKSCS:2008, ei_big5hkscs2008
 EUC-KR, ei_euc_kr
 EUCKR, ei_euc_kr
 CSEUCKR, ei_euc_kr

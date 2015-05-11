@@ -1,12 +1,12 @@
 {
-  "name": "iconv",
+  "name": "iconv-utf-8-mac",
   "main": "./lib/iconv",
   "version": "2.1.7",
   "description": "Text recoding in JavaScript for fun and profit!",
-  "homepage": "https://github.com/bnoordhuis/node-iconv",
+  "homepage": "https://github.com/kuronekomichael/node-iconv-utf-8-mac",
   "repository": {
     "type": "git",
-    "url": "git://github.com/bnoordhuis/node-iconv.git"
+    "url": "git://github.com/kuronekomichael/node-iconv-utf-8-mac.git"
   },
   "author": {
     "name": "Ben Noordhuis",

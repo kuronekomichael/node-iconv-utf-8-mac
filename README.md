@@ -1,6 +1,19 @@
-# node-iconv
+# node-iconv-utf8
 
 Text recoding in JavaScript for fun and profit!
+
+## for utf8-mac
+
+see http://d.hatena.ne.jp/joker1007/20110723/1311406670
+
+```
+wget http://www.opensource.apple.com/tarballs/libiconv/libiconv-42.tar.gz
+tar xvzf libiconv-42.tar.gz
+rm -rf ./deps/libiconv
+mv ./libiconv-42/libiconv ./deps/
+
+cp ./deps/libiconv/include/iconv.h ./support/
+```
 
 ## Supported encodings
 
@@ -42,6 +55,7 @@ Text recoding in JavaScript for fun and profit!
     Platform specifics
         HP-ROMAN8, NEXTSTEP, ATARIST, RISCOS-LATIN1
     Full Unicode
+        UTF-8-MAC
         UTF-8
         UCS-2, UCS-2BE, UCS-2LE
         UCS-4, UCS-4BE, UCS-4LE
@@ -64,14 +78,14 @@ It supports most common encodings and doesn't require a compiler to install.
 
 ## Installing with [npm](http://npmjs.org/)
 
-    $ npm install iconv
+    $ npm install iconv-utf-8-mac
 
 Note that you do not need to have a copy of libiconv installed to use this
 module.
 
 ## Compiling from source
 
-    $ git clone git://github.com/bnoordhuis/node-iconv.git
+    $ git clone git@github.com:kuronekomichael/node-iconv-utf-8-mac.git
     $ node-gyp configure build
     $ npm install .
 
@@ -79,21 +93,21 @@ module.
 
 Encode from one character encoding to another:
 
-    // convert from UTF-8 to ISO-8859-1
+    // convert from UTF-8-MAC to UTF-8
     var Buffer = require('buffer').Buffer;
-    var Iconv  = require('iconv').Iconv;
+    var Iconv  = require('iconv-utf-8-mac').Iconv;
     var assert = require('assert');
 
-    var iconv = new Iconv('UTF-8', 'ISO-8859-1');
-    var buffer = iconv.convert('Hello, world!');
-    var buffer2 = iconv.convert(new Buffer('Hello, world!'));
-    assert.equals(buffer.inspect(), buffer2.inspect());
+    var iconv = new Iconv('UTF-8-MAC', 'UTF-8');
+    var buffer = iconv.convert('グラタン');
+    var buffer2 = iconv.convert(new Buffer('グラタン'));
+    assert.equal(buffer.inspect(), buffer2.inspect());
     // do something useful with the buffers
 
 A simple ISO-8859-1 to UTF-8 conversion TCP service:
 
     var net = require('net');
-    var Iconv = require('iconv').Iconv;
+    var Iconv = require('iconv-utf-8-mac').Iconv;
     var server = net.createServer(function(conn) {
       var iconv = new Iconv('latin1', 'utf-8');
       conn.pipe(iconv).pipe(conn);

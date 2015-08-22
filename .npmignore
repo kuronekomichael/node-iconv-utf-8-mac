@@ -1,1 +1,3 @@
 deps/libiconv/tests
+build
+.npmignore

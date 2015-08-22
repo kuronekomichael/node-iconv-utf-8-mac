@@ -1,7 +1,7 @@
 {
   "name": "iconv-utf-8-mac",
   "main": "./lib/iconv",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "description": "Text recoding in JavaScript for fun and profit!",
   "homepage": "https://github.com/kuronekomichael/node-iconv-utf-8-mac",
   "repository": {

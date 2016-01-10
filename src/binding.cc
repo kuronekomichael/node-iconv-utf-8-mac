@@ -110,7 +110,7 @@ struct Iconv
     size_t input_consumed = input_size;
     size_t output_consumed = output_size;
     size_t nconv = iconv(iv->conv_,
-                         (char **)&input_buf,
+                         &input_buf,
                          &input_size,
                          &output_buf,
                          &output_size);

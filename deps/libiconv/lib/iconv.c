@@ -434,8 +434,8 @@ invalid:
 }
 
 size_t iconv (iconv_t icd,
-              ICONV_CONST char* * inbuf, size_t *inbytesleft,
-              char* * outbuf, size_t *outbytesleft)
+              char* * __restrict inbuf, size_t * __restrict inbytesleft,
+              char* * __restrict outbuf, size_t * __restrict outbytesleft)
 {
   conv_t cd = (conv_t) icd;
   if (inbuf == NULL || *inbuf == NULL)

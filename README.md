@@ -7,15 +7,16 @@ Text recoding in JavaScript for fun and profit!
 see http://d.hatena.ne.jp/joker1007/20110723/1311406670
 
 ```
-wget http://www.opensource.apple.com/tarballs/libiconv/libiconv-44.tar.gz
-tar xvzf libiconv-44.tar.gz
+LIBICONV_VER=libiconv-50
+wget http://www.opensource.apple.com/tarballs/libiconv/${LIBICONV_VER}.tar.gz
+tar xvzf ${LIBICONV_VER}.tar.gz
 rm -rf deps/libiconv
-mv libiconv-44/libiconv deps/
+mv ${LIBICONV_VER}/libiconv deps/
 
 cp deps/libiconv/include/iconv.h support/
 
-rm -rf libiconv-44
-rm libiconv-44.tar.gz
+rm -rf ${LIBICONV_VER}
+rm ${LIBICONV_VER}.tar.gz
 ```
 
 ## Supported encodings

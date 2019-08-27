@@ -7,13 +7,14 @@ Text recoding in JavaScript for fun and profit!
 see http://d.hatena.ne.jp/joker1007/20110723/1311406670
 
 ```
-LIBICONV_VER=libiconv-50
+LIBICONV_VER=libiconv-51.200.6
 wget http://www.opensource.apple.com/tarballs/libiconv/${LIBICONV_VER}.tar.gz
 tar xvzf ${LIBICONV_VER}.tar.gz
 rm -rf deps/libiconv
 mv ${LIBICONV_VER}/libiconv deps/
 
 cp deps/libiconv/include/iconv.h support/
+cp deps/libiconv/include/iconv_tiger.h support/
 
 rm -rf ${LIBICONV_VER}
 rm ${LIBICONV_VER}.tar.gz

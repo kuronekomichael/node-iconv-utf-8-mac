@@ -36,6 +36,7 @@ using v8::Object;
 using v8::ObjectTemplate;
 using v8::String;
 using v8::Value;
+using v8::Isolate;
 
 
 struct Iconv
@@ -60,7 +61,9 @@ struct Iconv
 
   static void Initialize(Handle<Object> obj)
   {
-    Local<ObjectTemplate> t = ObjectTemplate::New();
+    Isolate* isolate = Isolate::GetCurrent();
+
+    Local<ObjectTemplate> t = ObjectTemplate::New(isolate);
     t->SetInternalFieldCount(1);
     object_template.Reset(t);
     obj->Set(Nan::New<String>("make").ToLocalChecked(),
